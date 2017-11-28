@@ -1,0 +1,6 @@
+<resources>
+    <!-- <string name="app_name">areamaps</string> -->
+    <string name="app_name">Area maps checker</string>
+    <!-- my generic unrestricted key -->
+    <string name="google_generic_key">AIzaSyBqZDMScBF2vJz-a1BaXV9feJOQGnQ6WY4</string>
+</resources>

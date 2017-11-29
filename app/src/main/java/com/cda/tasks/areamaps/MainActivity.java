@@ -16,6 +16,8 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.CameraUpdateFactory;
 
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.maps.android.PolyUtil;
@@ -78,6 +80,10 @@ public class MainActivity extends AppCompatActivity
     // Kml polygon boundaries
     private LatLng[] mPolyBounds;
 
+    private Marker mCurrPosMarker = null;
+
+    // flag showing which kml file was loaded
+    // it's used with button to start reloading new kml file
     private  boolean mIsAllowedKmlLoaded = true;
 
     @Override
@@ -167,18 +173,37 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onMapClick(LatLng latLng) {
         Log.d("Map Clicked ", latLng.toString());
+
         // TO DO : make Pip detection
         boolean isInside = PipDetector.isPointInsidePolygon(mPolyBounds, latLng);
+        double distance = 0;
 
+        // prepare 'Toast'
         String toastText = "You are ";
         if(!isInside) {
             // outside polygon area click
-            double distance = PipDetector.calcPointToPolygonDistance(latLng, mPolyBounds);
+            distance = PipDetector.calcPointToPolygonDistance(latLng, mPolyBounds);
             toastText += "outside the area\n" + latLng.toString() + "\nShortest distance to the area is " + distance + " meters";
         } else {
             toastText += "inside the area\n" + latLng.toString();
         }
+
+        // add marker at the click point
+        if(mCurrPosMarker != null) {
+            // remove previous position marker
+            mCurrPosMarker.remove();
+        }
+        // show current click position
+        MarkerOptions opt = new MarkerOptions().position(latLng);
+        String title = !isInside ? String.valueOf(distance) + " m. away" : "you are here";
+        opt.title(title);
+        mCurrPosMarker = mGoogleMap.addMarker(opt);
+
+        // finally show the notification
         Toast.makeText(MainActivity.this, toastText, Toast.LENGTH_SHORT).show();
+
+        // done
+        return;
     }
 
     private void loadAndDrawKmlFile(int kmlResId) {
@@ -269,6 +294,7 @@ class PipDetector
     // At each crossing, the ray switches between inside and outside (Jordan curve theorem)
     // * GPS (polar) coordinates: longitude:X, latitude:Y
 
+    // true - it's inside, false - outside
     static boolean isPointInsidePolygon(LatLng[] bounds, LatLng point) {
         boolean isInside = false;
 
@@ -285,7 +311,7 @@ class PipDetector
         // done
         return isInside;
     }
-
+    // returns distance in meters
     static double calcPointToPolygonDistance(LatLng point, LatLng[] bounds) {
         // TO DO
         // It's ugly code, has to be revised and improved
@@ -309,6 +335,7 @@ class PipDetector
         // done
         return distance;
     }
+    // returns distance in meters
     static double calcPointToLineDistance(LatLng a, LatLng b, LatLng p) {
 
         double distance = PolyUtil.distanceToLine(p, a, b);

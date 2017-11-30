@@ -11,6 +11,8 @@ import java.util.List;
 // Point in Polygon (PIP) and distances Helper
 public class GeometryUtils
 {
+    public static LatLng IntersectPoint = null;
+
     // Based on https://wrf.ecse.rpi.edu//Research/Short_Notes/pnpoly.html
     // Running semi-infinite ray horizontally (increasing x, fixed y) out from the test point,
     // and count how many edges it crosses
@@ -54,7 +56,7 @@ public class GeometryUtils
             if (endPointIndex >= bounds.length) {
                 endPointIndex = 0;
             }
-            // calc a distance to current line
+            // calculate shortest distance to current line
             double currentDistance = PolyUtil.distanceToLine(point, start, bounds[endPointIndex]);
 
             if (distance == -1 || currentDistance < distance) {
@@ -64,4 +66,40 @@ public class GeometryUtils
         // done
         return distance;
     }
+
+    /*
+    // Locate the closest distance point on a line from a given source point
+    // https://github.com/googlemaps/android-maps-utils/blob/master/library/src/com/google/maps/android/PolyUtil.java
+    static public LatLng locateClosestPointLine(final LatLng p, final LatLng start, final LatLng end) {
+        if (start.equals(end)) {
+            return start;
+        }
+
+        final double plat = Math.toRadians(p.latitude);
+        final double plng = Math.toRadians(p.longitude);
+        final double startlat = Math.toRadians(start.latitude);
+        final double startlng = Math.toRadians(start.longitude);
+        final double endlat = Math.toRadians(end.latitude);
+        final double endlng = Math.toRadians(end.longitude);
+
+        final double deltalat = endlat - startlat;
+        final double deltalng = endlng - startlng;
+
+        final double u = ((plat - startlat) * deltalat + (plng - startlng) * deltalng)
+                / (deltalat * deltalat + deltalng * deltalng);
+
+        if (u <= 0.0) {
+            return start;
+        }
+        if (u >= 1.0) {
+            return end;
+        }
+        LatLng closestPoint = new LatLng(start.latitude + (u * (end.latitude - start.latitude)),
+                start.longitude + (u * (end.longitude - start.longitude)));
+        //
+        return closestPoint;
+    }
+    */
+
 }
+

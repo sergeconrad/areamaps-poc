@@ -11,7 +11,6 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 
-import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -20,9 +19,6 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
-import com.google.maps.android.PolyUtil;
-import com.google.maps.android.SphericalUtil;
-import com.google.maps.android.data.Feature;
 import com.google.maps.android.data.kml.KmlLayer;
 import com.google.maps.android.data.kml.KmlContainer;
 import com.google.maps.android.data.kml.KmlPlacemark;
@@ -175,31 +171,34 @@ public class MainActivity extends AppCompatActivity
         Log.d("Map Clicked ", latLng.toString());
 
         // TO DO : make Pip detection
-        boolean isInside = PipDetector.isPointInsidePolygon(mPolyBounds, latLng);
+        boolean isInside = GeometryUtils.isPointInsidePolygon(mPolyBounds, latLng);
         double distance = 0;
 
-        // prepare 'Toast'
-        String toastText = "You are ";
+         String toastText = "You are ";
+        // clear current and closest markers
+        //
+        if(mCurrPosMarker != null) {
+            // remove previous position marker
+            mCurrPosMarker.remove();
+        }
+
         if(!isInside) {
             // outside polygon area click
-            distance = PipDetector.calcPointToPolygonDistance(latLng, mPolyBounds);
+            // get distance/point
+            distance = GeometryUtils.calcPointToPolygonDistance(latLng, mPolyBounds);
+            // prepare toast notification message
             toastText += "outside the area\n" + latLng.toString() + "\nShortest distance to the area is " + distance + " meters";
         } else {
             toastText += "inside the area\n" + latLng.toString();
         }
 
         // add marker at the click point
-        if(mCurrPosMarker != null) {
-            // remove previous position marker
-            mCurrPosMarker.remove();
-        }
-        // show current click position
         MarkerOptions opt = new MarkerOptions().position(latLng);
         String title = !isInside ? String.valueOf(distance) + " m. away" : "you are here";
         opt.title(title);
         mCurrPosMarker = mGoogleMap.addMarker(opt);
 
-        // finally show the notification
+        // finally show the notification message
         Toast.makeText(MainActivity.this, toastText, Toast.LENGTH_SHORT).show();
 
         // done
@@ -285,74 +284,3 @@ public class MainActivity extends AppCompatActivity
     }
 }
 
-// Point in Polygon (PIP) Helper
-class PipDetector
-{
-    // Based on https://wrf.ecse.rpi.edu//Research/Short_Notes/pnpoly.html
-    // Running semi-infinite ray horizontally (increasing x, fixed y) out from the test point,
-    // and count how many edges it crosses
-    // At each crossing, the ray switches between inside and outside (Jordan curve theorem)
-    // * GPS (polar) coordinates: longitude:X, latitude:Y
-
-    // true - it's inside, false - outside
-    static boolean isPointInsidePolygon(LatLng[] bounds, LatLng point) {
-        boolean isInside = false;
-
-        for (int i = 0, j = bounds.length - 1; i < bounds.length; j = i++) {
-            if ((bounds[i].latitude > point.latitude) != (bounds[j].latitude > point.latitude)
-                    &&
-                    (point.longitude < (bounds[j].longitude - bounds[i].longitude)
-                            * (point.latitude - bounds[i].latitude)
-                            / (bounds[j].latitude-bounds[i].latitude)
-                            + bounds[i].longitude)) {
-                isInside = !isInside;
-            }
-        }
-        // done
-        return isInside;
-    }
-    // returns distance in meters
-    static double calcPointToPolygonDistance(LatLng point, LatLng[] bounds) {
-        // TO DO
-        // It's ugly code, has to be revised and improved
-        // meanwhile it works
-        double distance = 1000000000; // initial very large seed
-        // go through each line
-        for(int idx = 0; idx < bounds.length; ++idx) {
-            int prevIdx = idx - 1;
-            if(prevIdx < 0) {
-                prevIdx = bounds.length - 1;
-            }
-            LatLng currPoint = bounds[idx];
-            LatLng prevPoint = bounds[prevIdx];
-            double lineDistance = calcPointToLineDistance(prevPoint, currPoint,point);
-
-            // take the lesser value
-            if(lineDistance < distance) {
-                distance = lineDistance;
-            }
-        }
-        // done
-        return distance;
-    }
-    // returns distance in meters
-    static double calcPointToLineDistance(LatLng a, LatLng b, LatLng p) {
-
-        double distance = PolyUtil.distanceToLine(p, a, b);
-        /*
-        // TO DO: Convert to metric
-        double x1 = (p.longitude - a.longitude)*(b.longitude - a.longitude) + (p.latitude - a.latitude)*(b.latitude-a.latitude);
-        double x2 = (b.longitude-a.longitude)*(b.longitude-a.longitude) + (b.latitude-a.latitude)*(b.latitude-a.latitude);
-        double t = x1 / x2;
-        if(t < 0) {
-            t = 0;
-        } else if(t > 1) {
-            t = 1;
-        }
-        double v1 = ((a.longitude - p.longitude) + (b.longitude-a.longitude)*t) * ((a.longitude - p.longitude) + (b.longitude-a.longitude)*t);
-        double v2 = ((a.latitude - p.latitude) + (b.latitude-a.latitude)*t) * ((a.latitude - p.latitude) + (b.latitude-a.latitude)*t);
-        double d = Math.sqrt(v1 + v2);
-        */
-        return distance;
-    }
-}

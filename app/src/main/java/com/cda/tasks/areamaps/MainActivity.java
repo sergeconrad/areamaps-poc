@@ -77,6 +77,7 @@ public class MainActivity extends AppCompatActivity
     private LatLng[] mPolyBounds;
 
     private Marker mCurrPosMarker = null;
+    private Marker mClosestPosMarker = null;
 
     // flag showing which kml file was loaded
     // it's used with button to start reloading new kml file
@@ -181,26 +182,40 @@ public class MainActivity extends AppCompatActivity
             // remove previous position marker
             mCurrPosMarker.remove();
         }
+        if(mClosestPosMarker != null) {
+            mClosestPosMarker.remove();
+        }
 
+        DistancePoint closestPoint = null;
         if(!isInside) {
             // outside polygon area click
             // get distance/point
-            distance = GeometryUtils.calcPointToPolygonDistance(latLng, mPolyBounds);
+            //distance = GeometryUtils.calcPointToPolygonDistance(latLng, mPolyBounds);
+            closestPoint = GeometryUtils.calcPointToPolygonDistance(latLng, mPolyBounds);
+
+            // add closest point marker
+            MarkerOptions copt = new MarkerOptions().position(closestPoint.Point);
+            mClosestPosMarker = mGoogleMap.addMarker(copt);
+
             // prepare toast notification message
-            toastText += "outside the area\n" + latLng.toString() + "\nShortest distance to the area is " + distance + " meters";
+            //toastText += "outside the area\n" + latLng.toString() + "\nShortest distance to the area is " + distance + " meters";
+            toastText += "outside the area\n" + latLng.toString()
+                    + "\nShortest distance to the area is " +Math.round(closestPoint.Distance) + " meters";
+            //
         } else {
             toastText += "inside the area\n" + latLng.toString();
         }
 
         // add marker at the click point
         MarkerOptions opt = new MarkerOptions().position(latLng);
-        String title = !isInside ? String.valueOf(distance) + " m. away" : "you are here";
+        //String title = !isInside ? String.valueOf(distance) + " m. away" : "you are here";
+
+        String title = !isInside ? String.valueOf(Math.round(closestPoint.Distance)) + " m. away" : "you are here";
         opt.title(title);
         mCurrPosMarker = mGoogleMap.addMarker(opt);
 
         // finally show the notification message
         Toast.makeText(MainActivity.this, toastText, Toast.LENGTH_SHORT).show();
-
         // done
         return;
     }

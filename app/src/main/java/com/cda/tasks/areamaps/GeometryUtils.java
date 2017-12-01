@@ -38,12 +38,17 @@ public class GeometryUtils
     }
 
     // returns shortest distance to polygon in meters
-    static double calcPointToPolygonDistance(LatLng point, LatLng[] bounds) {
+    //static double calcPointToPolygonDistance(LatLng point, LatLng[] bounds) {
+    static DistancePoint calcPointToPolygonDistance(LatLng point, LatLng[] bounds) {
         // calculated distance to return
         double distance = -1;
+        double distance2 = -1; // for usage in test
+
+        LatLng p1 = null, p2 = null;
 
         if (point == null || bounds == null) {
-            return -1; // error case throw exception
+            //return -1; // error case throw exception
+            return null;
         }
 
         // iterate all polygon lines
@@ -57,19 +62,43 @@ public class GeometryUtils
                 endPointIndex = 0;
             }
             // calculate shortest distance to current line
+            // to find the nearest segment line
             double currentDistance = PolyUtil.distanceToLine(point, start, bounds[endPointIndex]);
 
             if (distance == -1 || currentDistance < distance) {
                 distance = currentDistance;
+                distance2 = currentDistance;
+                p1 = start;
+                p2 = bounds[endPointIndex];
             }
         }
-        // done
-        return distance;
+
+        // locate the closest point on the segment line
+        LatLng closestPoint = null;
+        if(p1 != null && p2 != null) {
+            LatLng closestPoint2 = locateClosestPointLine(point, p1, p2);
+            closestPoint = locateClosestPointOnSegment(point, p1, p2);
+            Log.d("DIFFERENCE LAT/LNG : ",
+                    Double.toString(Math.abs(closestPoint2.latitude - closestPoint.latitude)) + " : "
+            + Double.toString(Math.abs(closestPoint2.longitude - closestPoint.longitude)));
+        }
+
+        // this call provide more precise results than 'PolyUtil.distanceToLine' called above
+        // so use it ???,
+        // it tested on 'BAD' sample data -> results exactly the same that we can get
+        // using 'http://maps.google.com' measuring distance between two points
+        distance = SphericalUtil.computeDistanceBetween(point, closestPoint);
+        Log.d("DIFFERENCE DISTANCE : ", Double.toString(Math.abs(distance2 - distance)));
+
+        //return distance;
+        return new DistancePoint(distance, closestPoint);
     }
 
-    /*
+    // these functions below returns equals results (almost)
+    //
     // Locate the closest distance point on a line from a given source point
     // https://github.com/googlemaps/android-maps-utils/blob/master/library/src/com/google/maps/android/PolyUtil.java
+    //
     static public LatLng locateClosestPointLine(final LatLng p, final LatLng start, final LatLng end) {
         if (start.equals(end)) {
             return start;
@@ -99,7 +128,48 @@ public class GeometryUtils
         //
         return closestPoint;
     }
-    */
+    //
+    // based on http://geomalgorithms.com/a02-_lines.html (C++)
+    //
+    public static LatLng locateClosestPointOnSegment(LatLng p, LatLng p1, LatLng p2) {
+        LatLng found = null;
 
+        LatLng v = new LatLng(p2.latitude - p1.latitude, p2.longitude - p1.longitude);
+        LatLng w = new LatLng(p.latitude - p1.latitude, p.longitude - p1.longitude);
+
+        double c1 = dot(w,v);
+        if(c1 < 0.0) {
+            return found = p1;
+        }
+
+        double c2 = dot(v,v);
+        if(c2 <= c1) {
+            return found = p2;
+        }
+
+        double b = c1 / c2;
+        LatLng x = new LatLng(b*v.latitude, b*v.longitude);
+        found = new LatLng(p1.latitude + x.latitude, p1.longitude + x.longitude);
+
+        // done
+        return found;
+    }
+
+    // helpers
+    private static double dot(LatLng p1, LatLng p2) {
+        return p1.longitude * p2.longitude + p1.latitude * p2.latitude;
+    }
+}
+
+// simple stupid pair impl.
+class DistancePoint
+{
+    public double Distance;
+    public LatLng Point;
+
+    public DistancePoint(double distance, LatLng point) {
+        Distance = distance;
+        Point = point;
+    }
 }
 
